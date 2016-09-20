@@ -23,6 +23,8 @@ public class DemoImageView extends View {
         void onSave();
     }
 
+    private static final int SCALE_POINT_RADIUS = 50;
+
     private static final int TOUCH_PIC = 0;
     private static final int TOUCH_SCALE_POINT_LEFT_TOP = 1;
     private static final int TOUCH_SCALE_POINT_RIGHT_TOP = 2;
@@ -43,7 +45,7 @@ public class DemoImageView extends View {
 
     private float angle = 0f;
 
-    private int sx, sy, dx, dy, ex, ey;
+    private int sx, sy, dx, dy;
     private boolean isReseting = false;
 
     private int firstTouchStatus = TOUCH_PIC;
@@ -118,8 +120,6 @@ public class DemoImageView extends View {
             sy = 0;
             dx = 0;
             dy = 0;
-            ex = 0;
-            ey = 0;
             if (temp != null && temp != b) {
                 Bitmap newB = Bitmap.createBitmap(temp, bx, by, b.getWidth(), b.getHeight(), new Matrix(), false);
                 temp.recycle();
@@ -188,10 +188,10 @@ public class DemoImageView extends View {
         if (b != null) {
             Matrix matrix = new Matrix();
             matrix.postTranslate(w / 2 - b.getWidth() / 2, h / 2 - b.getHeight() / 2);
-            matrix.postScale((float) (Math.sin(Math.abs(rotate) * Math.PI / 180f + angle) / Math.sin(angle)), (float) (Math.sin(Math.abs(rotate) * Math.PI / 180f + angle) / Math.sin(angle)), w / 2, h / 2);
-            matrix.postRotate(rotate, w / 2, h / 2);
+//            matrix.postScale((float) (Math.sin(Math.abs(rotate) * Math.PI / 180f + angle) / Math.sin(angle)), (float) (Math.sin(Math.abs(rotate) * Math.PI / 180f + angle) / Math.sin(angle)), w / 2, h / 2);
             matrix.postTranslate(-scaletx, -scalety);
             matrix.postScale(scalex, scaley, w / 2, h / 2);
+            matrix.postRotate(rotate, w / 2, h / 2);
             if (mirror) matrix.postScale(-1, 1, w / 2, h / 2);//前两个是xy变换，后两个是对称轴中心点
             matrix.postTranslate(dx, dy);
             canvas.drawBitmap(b, matrix, p);
@@ -222,8 +222,6 @@ public class DemoImageView extends View {
                 case MotionEvent.ACTION_DOWN:
                     dx = 0;
                     dy = 0;
-                    ex = 0;
-                    ey = 0;
                     sx = (int) event.getX();
                     sy = (int) event.getY();
                     firstTouchStatus = getScalePoint(sx, sy);
@@ -253,7 +251,7 @@ public class DemoImageView extends View {
         setBackgroundColor(Color.GRAY);
         pb.setColor(Color.WHITE);
         pb.setStrokeWidth(5);
-        leftTopCircleRect = new RectF(0, 0, 40, 40);
+        leftTopCircleRect = new RectF(0, 0, SCALE_POINT_RADIUS * 2, SCALE_POINT_RADIUS * 2);
         rightTopCircleRect = new RectF(leftTopCircleRect);
         leftBottomRect = new RectF(leftTopCircleRect);
         rightBottomRect = new RectF(leftTopCircleRect);
@@ -268,8 +266,22 @@ public class DemoImageView extends View {
     }
 
     private void handleMoveEventTouchPic(MotionEvent event) {
-        dx = (int) (event.getX() - sx);
-        dy = (int) (event.getY() - sy);
+        int tempx = (int) (event.getX() - sx);
+        int tempy = (int) (event.getY() - sy);
+        if ((tempx <= (0.5f * bw + scaletx) * scalex - 0.5 * bw) && (tempx >= -((0.5f * bw - scaletx) * scalex - 0.5 * bw))) {
+            dx = tempx;
+        } else if ((tempx <= (0.5f * bw + scaletx) * scalex - 0.5 * bw)) {
+            dx = (int) -((0.5f * bw - scaletx) * scalex - 0.5 * bw);
+        } else {
+            dx = (int) ((0.5f * bw + scaletx) * scalex - 0.5 * bw);
+        }
+        if ((tempy <= (0.5f * bh + scalety) * scaley - 0.5 * bh) && (tempy >= -((0.5f * bh - scalety) * scaley - 0.5 * bh))) {
+            dy = tempy;
+        } else if ((tempy <= (0.5f * bh + scalety) * scaley - 0.5 * bh)) {
+            dy = (int) -((0.5f * bh - scalety) * scaley - 0.5 * bh);
+        } else {
+            dy = (int) ((0.5f * bh + scalety) * scaley - 0.5 * bh);
+        }
         spx = 0;
         spy = 0;
         invalidate();
@@ -284,51 +296,59 @@ public class DemoImageView extends View {
     }
 
     private void handleUpEventTouchPic(MotionEvent event) {
-        isReseting = true;
-        dx = (int) (event.getX() - sx);
-        dy = (int) (event.getY() - sy);
-        ex = dx;
-        ey = dy;
-        ValueAnimator animator = ValueAnimator.ofFloat(1f, 0f);
-        animator.setDuration(200);
-        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                float factor = (float) animation.getAnimatedValue();
-                dx = (int) (ex * factor);
-                dy = (int) (ey * factor);
-                invalidate();
-            }
-        });
-        animator.addListener(new Animator.AnimatorListener() {
-            @Override
-            public void onAnimationStart(Animator animation) {
-
-            }
-
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                isReseting = false;
-                firstTouchStatus = TOUCH_PIC;
-                dx = 0;
-                dy = 0;
-                sx = 0;
-                sy = 0;
-                ex = 0;
-                ey = 0;
-            }
-
-            @Override
-            public void onAnimationCancel(Animator animation) {
-
-            }
-
-            @Override
-            public void onAnimationRepeat(Animator animation) {
-
-            }
-        });
-        animator.start();
+//        isReseting = true;
+//        dx = (int) (event.getX() - sx);
+//        dy = (int) (event.getY() - sy);
+//        ex = dx;
+//        ey = dy;
+//        ValueAnimator animator = ValueAnimator.ofFloat(1f, 0f);
+//        animator.setDuration(200);
+//        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+//            @Override
+//            public void onAnimationUpdate(ValueAnimator animation) {
+//                float factor = (float) animation.getAnimatedValue();
+//                dx = (int) (ex * factor);
+//                dy = (int) (ey * factor);
+//                invalidate();
+//            }
+//        });
+//        animator.addListener(new Animator.AnimatorListener() {
+//            @Override
+//            public void onAnimationStart(Animator animation) {
+//
+//            }
+//
+//            @Override
+//            public void onAnimationEnd(Animator animation) {
+//                isReseting = false;
+//                firstTouchStatus = TOUCH_PIC;
+//                dx = 0;
+//                dy = 0;
+//                sx = 0;
+//                sy = 0;
+//                ex = 0;
+//                ey = 0;
+//            }
+//
+//            @Override
+//            public void onAnimationCancel(Animator animation) {
+//
+//            }
+//
+//            @Override
+//            public void onAnimationRepeat(Animator animation) {
+//
+//            }
+//        });
+//        animator.start();
+        isReseting = false;
+        firstTouchStatus = TOUCH_PIC;
+        scaletx = scaletx - dx / scalex;
+        scalety = scalety - dy / scaley;
+        dx = 0;
+        dy = 0;
+        sx = 0;
+        sy = 0;
     }
 
     private void handleUpEventTouchScalePoint(MotionEvent event) {
@@ -366,8 +386,6 @@ public class DemoImageView extends View {
         dy = 0;
         sx = 0;
         sy = 0;
-        ex = 0;
-        ey = 0;
 
         invalidate();
 
