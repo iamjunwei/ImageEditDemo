@@ -15,7 +15,7 @@ import android.view.View;
  * Created by xiajw on 2016/9/21.
  */
 
-public class DemoImageView2 extends View {
+public class DemoImageViewStable3 extends View {
 
     private static final int SCALE_POINT_RADIUS = 60;
 
@@ -45,17 +45,17 @@ public class DemoImageView2 extends View {
 
     private float rotate = 0f;
 
-    public DemoImageView2(Context context) {
+    public DemoImageViewStable3(Context context) {
         super(context);
         init();
     }
 
-    public DemoImageView2(Context context, AttributeSet attrs) {
+    public DemoImageViewStable3(Context context, AttributeSet attrs) {
         super(context, attrs);
         init();
     }
 
-    public DemoImageView2(Context context, AttributeSet attrs, int defStyleAttr) {
+    public DemoImageViewStable3(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init();
     }

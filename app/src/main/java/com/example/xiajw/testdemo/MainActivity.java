@@ -68,6 +68,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onClick(View v) {
 //                        imageView.save();
+                        imageView.setRotate(45);
                     }
                 });
                 button.setEnabled(true);
