@@ -15,7 +15,7 @@ import java.io.File;
 
 public class MainActivity extends AppCompatActivity {
 
-    private DemoImageView imageView;
+    private DemoImageView2 imageView;
     private SeekBar seekBar;
     private Button button, btnSave;
 
@@ -31,13 +31,13 @@ public class MainActivity extends AppCompatActivity {
         seekBar.setProgress(50);
         seekBar.setMax(100);
         seekBar.setEnabled(false);
-        imageView = (DemoImageView) findViewById(R.id.demo_image);
-        imageView.setOnSaveListener(new DemoImageView.OnSaveListener() {
-            @Override
-            public void onSave() {
-                seekBar.setProgress(50);
-            }
-        });
+        imageView = (DemoImageView2) findViewById(R.id.demo_image);
+//        imageView.setOnSaveListener(new DemoImageView.OnSaveListener() {
+//            @Override
+//            public void onSave() {
+//                seekBar.setProgress(50);
+//            }
+//        });
         setBitmap();
     }
 
@@ -62,19 +62,19 @@ public class MainActivity extends AppCompatActivity {
             @Override
             protected void onPostExecute(Bitmap bitmap) {
                 super.onPostExecute(bitmap);
-                imageView.setB(bitmap);
+                imageView.setBitmap(bitmap);
                 btnSave.setEnabled(true);
                 btnSave.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        imageView.save();
+//                        imageView.save();
                     }
                 });
                 button.setEnabled(true);
                 button.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        imageView.mirror();
+//                        imageView.mirror();
                     }
                 });
                 seekBar.setEnabled(true);
