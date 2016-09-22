@@ -11,20 +11,86 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 
-    <Button
-        android:id="@+id/btn_mirror"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="mirror"/>
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btn_mirror"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="镜像"/>
+
+        <Button
+            android:id="@+id/btn_save"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="save"/>
+
+        <Button
+            android:id="@+id/btn_revert"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="还原"/>
+
+    </LinearLayout>
 
     <SeekBar
         android:id="@+id/seek_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
-    <Button
-        android:id="@+id/btn_save"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="save"/>
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btn_ratio_origin"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="原始"/>
+
+        <Button
+            android:id="@+id/btn_ratio_1_1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="1:1"/>
+
+        <Button
+            android:id="@+id/btn_ratio_3_4"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="3:4"/>
+
+        <Button
+            android:id="@+id/btn_ratio_4_3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="4:3"/>
+
+        <Button
+            android:id="@+id/btn_ratio_9_16"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="9: 16"/>
+
+        <Button
+            android:id="@+id/btn_ratio_16_9"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="16:9"/>
+
+    </LinearLayout>
+
 </LinearLayout>

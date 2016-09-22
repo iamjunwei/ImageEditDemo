@@ -17,7 +17,8 @@ public class MainActivity extends AppCompatActivity {
 
     private DemoImageView2 imageView;
     private SeekBar seekBar;
-    private Button button, btnSave;
+    private Button button, btnSave, btnRevert;
+    private Button btnRatio1_1, btnRatio4_3, btnRatio3_4, btnRatio9_16, btnRatio16_9, btnRatioOriginal;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -25,6 +26,20 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         button = (Button) findViewById(R.id.btn_mirror);
         button.setEnabled(false);
+        btnRevert = (Button) findViewById(R.id.btn_revert);
+        btnRevert.setEnabled(false);
+        btnRatio1_1 = (Button) findViewById(R.id.btn_ratio_1_1);
+        btnRatio1_1.setEnabled(false);
+        btnRatio3_4 = (Button) findViewById(R.id.btn_ratio_3_4);
+        btnRatio3_4.setEnabled(false);
+        btnRatio4_3 = (Button) findViewById(R.id.btn_ratio_4_3);
+        btnRatio4_3.setEnabled(false);
+        btnRatio9_16 = (Button) findViewById(R.id.btn_ratio_9_16);
+        btnRatio9_16.setEnabled(false);
+        btnRatio16_9 = (Button) findViewById(R.id.btn_ratio_16_9);
+        btnRatio16_9.setEnabled(false);
+        btnRatioOriginal = (Button) findViewById(R.id.btn_ratio_origin);
+        btnRatioOriginal.setEnabled(false);
         btnSave = (Button) findViewById(R.id.btn_save);
         btnSave.setEnabled(false);
         seekBar = (SeekBar) findViewById(R.id.seek_bar);
@@ -60,22 +75,78 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            protected void onPostExecute(Bitmap bitmap) {
+            protected void onPostExecute(final Bitmap bitmap) {
                 super.onPostExecute(bitmap);
-                imageView.setBitmap(bitmap);
+                imageView.initOriginBit(bitmap);
+                imageView.initBitmap(bitmap, ((float)bitmap.getWidth()) / bitmap.getHeight());
+                btnRevert.setEnabled(true);
+                btnRevert.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        imageView.initBitmap(bitmap, (float)(bitmap.getWidth()) / bitmap.getHeight());
+                        seekBar.setProgress(50);
+                    }
+                });
+                btnRatio1_1.setEnabled(true);
+                btnRatio1_1.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        imageView.initBitmap(bitmap, 1f);
+                        seekBar.setProgress(50);
+                    }
+                });
+                btnRatio3_4.setEnabled(true);
+                btnRatio3_4.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        imageView.initBitmap(bitmap, 0.75f);
+                        seekBar.setProgress(50);
+                    }
+                });
+                btnRatio4_3.setEnabled(true);
+                btnRatio4_3.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        imageView.initBitmap(bitmap, 4f / 3);
+                        seekBar.setProgress(50);
+                    }
+                });
+                btnRatio16_9.setEnabled(true);
+                btnRatio16_9.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        imageView.initBitmap(bitmap, 16f / 9);
+                        seekBar.setProgress(50);
+                    }
+                });
+                btnRatio9_16.setEnabled(true);
+                btnRatio9_16.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        imageView.initBitmap(bitmap, 9f / 16);
+                        seekBar.setProgress(50);
+                    }
+                });
+                btnRatioOriginal.setEnabled(true);
+                btnRatioOriginal.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        imageView.initBitmap(bitmap, (float)(bitmap.getWidth()) / bitmap.getHeight());
+                        seekBar.setProgress(50);
+                    }
+                });
                 btnSave.setEnabled(true);
                 btnSave.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-//                        imageView.save();
-                        imageView.setRotate(45);
+                        imageView.save();
                     }
                 });
                 button.setEnabled(true);
                 button.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-//                        imageView.mirror();
+                        imageView.mirror();
                     }
                 });
                 seekBar.setEnabled(true);

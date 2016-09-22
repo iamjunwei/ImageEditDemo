@@ -8,14 +8,16 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 
 /**
  * Created by xiajw on 2016/9/21.
  */
 
-public class DemoImageViewStable3 extends View {
+public class DemoImageViewStable3 extends View implements ScaleGestureDetector.OnScaleGestureListener {
 
     private static final int SCALE_POINT_RADIUS = 60;
 
@@ -25,15 +27,21 @@ public class DemoImageViewStable3 extends View {
     private static final int TOUCH_SCALE_POINT_LEFT_BOTTOM = 3;
     private static final int TOUCH_SCALE_POINT_RIGHT_BOTTOM = 4;
 
-    private Bitmap bitmap = null, originalBit;
+    private ScaleGestureDetector mScaleDetector;
+    private boolean isScaling = false;
+
+    private Bitmap bitmap = null, originalBit, startBitmap;
     private Paint bitmapPaint = new Paint();
     private Paint cropPaint = new Paint();
+    private Paint maskPaint = new Paint();
     private RectF leftTopCircleRect = new RectF();
     private RectF rightTopCircleRect = new RectF();
     private RectF leftBottomRect = new RectF();
     private RectF rightBottomRect = new RectF();
     private RectF cropRect = new RectF();
     private int originWidth, originHeight;
+
+    private int initBitmapLeft, initBitmapRight, intBitmapTop, initBitmapBottom;
 
     private int firstTouchStatus = TOUCH_PIC;
 
@@ -44,60 +52,126 @@ public class DemoImageViewStable3 extends View {
     private float sx, sy;
 
     private float rotate = 0f;
+    private boolean mirror = false;
+
+    private float ratio = 1f;
 
     public DemoImageViewStable3(Context context) {
         super(context);
-        init();
+        init(context);
     }
 
     public DemoImageViewStable3(Context context, AttributeSet attrs) {
         super(context, attrs);
-        init();
+        init(context);
     }
 
     public DemoImageViewStable3(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        init();
+        init(context);
     }
 
-    public void setBitmap(Bitmap b) {
+    public void initBitmap(Bitmap b, float ratio) {
         if (bitmap != null && bitmap != b) {
             bitmap.recycle();
         }
         bitmap = b;
         originalBit = b;
+        startBitmap = b;
         originWidth = b.getWidth();
         originHeight = b.getHeight();
         int bitmapLeft = (getMeasuredWidth() - bitmap.getWidth()) / 2;
         int bitmapWidth = bitmap.getWidth();
-        int bitmapTop = (getMeasuredHeight() - bitmap.getHeight()) / 2;
-        int bitmapHeight = bitmap.getHeight();
-        cropRect.set(bitmapLeft, bitmapTop, bitmapLeft + bitmapWidth, bitmapTop + bitmapHeight);
-        cropLeft = bitmapLeft;
-        cropRight = bitmapLeft + bitmapWidth;
-        cropTop = bitmapTop;
-        cropBottom = bitmapTop + bitmapHeight;
-        bitmapP1x = bitmapLeft;
-        bitmapP1y = bitmapTop;
-        bitmapP2x = bitmapLeft + bitmapWidth;
-        bitmapP2y = bitmapTop;
-        bitmapP3x = bitmapLeft;
-        bitmapP3y = bitmapTop + bitmapHeight;
-        bitmapP4x = bitmapLeft + bitmapWidth;
-        bitmapP4y = bitmapTop + bitmapHeight;
+        if (ratio >= (float)(originWidth) / originHeight) {
+            if (ratio >= 3f / 4) {
+                cropLeft = bitmapLeft;
+                cropRight = bitmapLeft + bitmapWidth;
+                cropTop = getHeight() / 2 - (float) (bitmapWidth) / ratio / 2;
+                cropBottom = getHeight() / 2 + (float) (bitmapWidth) / ratio / 2;
+                cropRect.set(cropLeft, cropTop, cropRight, cropBottom);
+                bitmapP1x = cropLeft;
+                bitmapP1y = getHeight() / 2 - (cropRight - cropLeft) * bitmap.getHeight() / bitmap.getWidth() / 2;
+                bitmapP2x = cropRight;
+                bitmapP2y = getHeight() / 2 - (cropRight - cropLeft) * bitmap.getHeight() / bitmap.getWidth() / 2;
+                bitmapP3x = cropLeft;
+                bitmapP3y = getHeight() / 2 + (cropRight - cropLeft) * bitmap.getHeight() / bitmap.getWidth() / 2;
+                bitmapP4x = cropRight;
+                bitmapP4y = getHeight() / 2 + (cropRight - cropLeft) * bitmap.getHeight() / bitmap.getWidth() / 2;
+            } else {
+                cropLeft = getWidth() / 2 - (float)(getHeight() - 40) * ratio / 2;
+                cropRight = getWidth() / 2 + (float)(getHeight() - 40) * ratio / 2;
+                cropTop = 20;
+                cropBottom = getHeight() - 20;
+                cropRect.set(cropLeft, cropTop, cropRight, cropBottom);
+                bitmapP1x = getWidth() / 2 - (float)(getHeight() - 40) * bitmap.getWidth() / bitmap.getHeight() / 2;
+                bitmapP1y = 20;
+                bitmapP2x = getWidth() / 2 + (float)(getHeight() - 40) * bitmap.getWidth() / bitmap.getHeight() / 2;
+                bitmapP2y = 20;
+                bitmapP3x = getWidth() / 2 - (float)(getHeight() - 40) * bitmap.getWidth() / bitmap.getHeight() / 2;
+                bitmapP3y = getHeight() - 20;
+                bitmapP4x = getWidth() / 2 + (float)(getHeight() - 40) * bitmap.getWidth() / bitmap.getHeight() / 2;
+                bitmapP4y = getHeight() - 20;
+            }
+        } else {
+            if (ratio >= 3f / 4) {
+                cropLeft = bitmapLeft;
+                cropRight = bitmapLeft + bitmapWidth;
+                cropTop = getHeight() / 2 - (float) (bitmapWidth) / ratio / 2;
+                cropBottom = getHeight() / 2 + (float) (bitmapWidth) / ratio / 2;
+                cropRect.set(cropLeft, cropTop, cropRight, cropBottom);
+                bitmapP1x = getWidth() / 2 - (cropBottom - cropTop) * bitmap.getWidth() / bitmap.getHeight() / 2;
+                bitmapP1y = cropTop;
+                bitmapP2x = getWidth() / 2 + (cropBottom - cropTop) * bitmap.getWidth() / bitmap.getHeight() / 2;
+                bitmapP2y = cropTop;
+                bitmapP3x = getWidth() / 2 - (cropBottom - cropTop) * bitmap.getWidth() / bitmap.getHeight() / 2;
+                bitmapP3y = cropBottom;
+                bitmapP4x = getWidth() / 2 + (cropBottom - cropTop) * bitmap.getWidth() / bitmap.getHeight() / 2;
+                bitmapP4y = cropBottom;
+            } else {
+                cropLeft = getWidth() / 2 - (float)(getHeight() - 40) * ratio / 2;
+                cropRight = getWidth() / 2 + (float)(getHeight() - 40) * ratio / 2;
+                cropTop = 20;
+                cropBottom = getHeight() - 20;
+                cropRect.set(cropLeft, cropTop, cropRight, cropBottom);
+                bitmapP1x = getWidth() / 2 - (float)(getHeight() - 40) * bitmap.getWidth() / bitmap.getHeight() / 2;
+                bitmapP1y = 20;
+                bitmapP2x = getWidth() / 2 + (float)(getHeight() - 40) * bitmap.getWidth() / bitmap.getHeight() / 2;
+                bitmapP2y = 20;
+                bitmapP3x = getWidth() / 2 - (float)(getHeight() - 40) * bitmap.getWidth() / bitmap.getHeight() / 2;
+                bitmapP3y = getHeight() - 20;
+                bitmapP4x = getWidth() / 2 + (float)(getHeight() - 40) * bitmap.getWidth() / bitmap.getHeight() / 2;
+                bitmapP4y = getHeight() - 20;
+            }
+        }
+        Log.d("MyLog", "left = " + cropLeft + " right = " + cropRight + " top = " + cropTop + " bottom = " + cropBottom);
+        this.ratio = ratio;
+        dx = 0;
+        dy = 0;
+        sx = 0;
+        sy = 0;
+        rotate = 0f;
+        mirror = false;
         invalidate();
     }
 
     public void setRotate(float rotate) {
         Matrix m = new Matrix();
-        m.postRotate(rotate);
-        Bitmap newBitmap = Bitmap.createBitmap(originalBit, 0, 0, originalBit.getWidth(), originalBit.getHeight(), m, false);
-        if (newBitmap != null && newBitmap != bitmap && bitmap != originalBit) {
+        if (!mirror)
+            m.postRotate(rotate);
+        else
+            m.postRotate(-rotate);
+        Bitmap newBitmap = Bitmap.createBitmap(startBitmap, 0, 0, startBitmap.getWidth(), startBitmap.getHeight(), m, false);
+        if (newBitmap != null && newBitmap != bitmap && bitmap != startBitmap) {
             bitmap.recycle();
         }
         bitmap = newBitmap;
-        getRotatePoint(rotate - this.rotate);
-        this.rotate = rotate;
+        if (!mirror) {
+            getRotatePoint(rotate - this.rotate);
+            this.rotate = rotate;
+        } else {
+            getRotatePoint(-rotate - this.rotate);
+            this.rotate = -rotate;
+        }
         invalidate();
     }
 
@@ -106,6 +180,42 @@ public class DemoImageViewStable3 extends View {
             bitmap.recycle();
             bitmap = null;
         }
+        if (originalBit != null && originalBit != bitmap) {
+            originalBit.recycle();
+            originalBit = null;
+        }
+        if (startBitmap != null && startBitmap != bitmap && startBitmap != originalBit) {
+            startBitmap.recycle();
+            startBitmap = null;
+        }
+    }
+
+    public void save() {
+
+    }
+
+    public void mirror() {
+        Matrix om = new Matrix();
+        om.postScale(-1, 1, startBitmap.getWidth() / 2, startBitmap.getHeight() / 2);
+        Bitmap newOrigin = Bitmap.createBitmap(startBitmap, 0, 0, startBitmap.getWidth(), startBitmap.getHeight(), om, false);
+        if (newOrigin != null && newOrigin != startBitmap && startBitmap != originalBit) {
+            startBitmap.recycle();
+        }
+        startBitmap = newOrigin;
+        Matrix m = new Matrix();
+        m.postRotate(-rotate);
+        Bitmap newBitmap = Bitmap.createBitmap(startBitmap, 0, 0, startBitmap.getWidth(), startBitmap.getHeight(), m, false);
+        if (newBitmap != null && bitmap != newBitmap && bitmap != startBitmap) {
+            bitmap.recycle();
+        }
+        bitmap = newBitmap;
+        bitmapP1x = (cropRect.right + cropRect.left) - bitmapP1x;
+        bitmapP2x = (cropRect.right + cropRect.left) - bitmapP2x;
+        bitmapP3x = (cropRect.right + cropRect.left) - bitmapP3x;
+        bitmapP4x = (cropRect.right + cropRect.left) - bitmapP4x;
+        rotate = -rotate;
+        mirror = !mirror;
+        invalidate();
     }
 
     @Override
@@ -139,6 +249,10 @@ public class DemoImageViewStable3 extends View {
                 cropLeft + radius, cropBottom + radius);
         rightBottomRect.set(cropRight - radius, cropBottom - radius,
                 cropRight + radius, cropBottom + radius);
+        canvas.drawRect(0, 0, getWidth(), cropTop, maskPaint);
+        canvas.drawRect(0, cropTop, cropLeft, cropBottom, maskPaint);
+        canvas.drawRect(cropRight, cropTop, getWidth(), cropBottom, maskPaint);
+        canvas.drawRect(0, cropBottom, getWidth(), getHeight(), maskPaint);
         canvas.drawRect(leftTopCircleRect, cropPaint);
         canvas.drawRect(rightTopCircleRect, cropPaint);
         canvas.drawRect(leftBottomRect, cropPaint);
@@ -147,6 +261,8 @@ public class DemoImageViewStable3 extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        mScaleDetector.onTouchEvent(event);
+        if (isScaling) return true;
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 dx = 0;
@@ -249,17 +365,37 @@ public class DemoImageViewStable3 extends View {
         float cy = (cropRect.top + cropRect.bottom) / 2;
         boolean canMove = true;
         if (this.rotate >= 0) {
-            boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, bitmapP1x + sx, bitmapP1y + sy, bitmapP3x + sx, bitmapP3y + sy);
-            boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, bitmapP1x + sx, bitmapP1y + sy, bitmapP2x + sx, bitmapP2y + sy);
-            boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, bitmapP3x + sx, bitmapP3y + sy, bitmapP4x + sx, bitmapP4y + sy);
-            boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, bitmapP2x + sx, bitmapP2y + sy, bitmapP4x + sx, bitmapP4y + sy);
-            if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect) canMove = false;
+            if (!mirror) {
+                boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, bitmapP1x + sx, bitmapP1y + sy, bitmapP3x + sx, bitmapP3y + sy);
+                boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, bitmapP1x + sx, bitmapP1y + sy, bitmapP2x + sx, bitmapP2y + sy);
+                boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, bitmapP3x + sx, bitmapP3y + sy, bitmapP4x + sx, bitmapP4y + sy);
+                boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, bitmapP2x + sx, bitmapP2y + sy, bitmapP4x + sx, bitmapP4y + sy);
+                if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                    canMove = false;
+            } else {
+                boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, bitmapP2x + sx, bitmapP2y + sy, bitmapP4x + sx, bitmapP4y + sy);
+                boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, bitmapP1x + sx, bitmapP1y + sy, bitmapP2x + sx, bitmapP2y + sy);
+                boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, bitmapP3x + sx, bitmapP3y + sy, bitmapP4x + sx, bitmapP4y + sy);
+                boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, bitmapP1x + sx, bitmapP1y + sy, bitmapP3x + sx, bitmapP3y + sy);
+                if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                    canMove = false;
+            }
         } else {
-            boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, bitmapP1x + sx, bitmapP1y + sy, bitmapP2x + sx, bitmapP2y + sy);
-            boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, bitmapP2x + sx, bitmapP2y + sy, bitmapP4x + sx, bitmapP4y + sy);
-            boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, bitmapP1x + sx, bitmapP1y + sy, bitmapP3x + sx, bitmapP3y + sy);
-            boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, bitmapP3x + sx, bitmapP3y + sy, bitmapP4x + sx, bitmapP4y + sy);
-            if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect) canMove = false;
+            if (!mirror) {
+                boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, bitmapP1x + sx, bitmapP1y + sy, bitmapP2x + sx, bitmapP2y + sy);
+                boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, bitmapP2x + sx, bitmapP2y + sy, bitmapP4x + sx, bitmapP4y + sy);
+                boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, bitmapP1x + sx, bitmapP1y + sy, bitmapP3x + sx, bitmapP3y + sy);
+                boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, bitmapP3x + sx, bitmapP3y + sy, bitmapP4x + sx, bitmapP4y + sy);
+                if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                    canMove = false;
+            } else {
+                boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, bitmapP1x + sx, bitmapP1y + sy, bitmapP2x + sx, bitmapP2y + sy);
+                boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, bitmapP1x + sx, bitmapP1y + sy, bitmapP3x + sx, bitmapP3y + sy);
+                boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, bitmapP2x + sx, bitmapP2y + sy, bitmapP4x + sx, bitmapP4y + sy);
+                boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, bitmapP3x + sx, bitmapP3y + sy, bitmapP4x + sx, bitmapP4y + sy);
+                if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                    canMove = false;
+            }
         }
         if (canMove) {
             bitmapP1x += sx;
@@ -279,46 +415,240 @@ public class DemoImageViewStable3 extends View {
     private void handleMoveEventTouchScalePoint(MotionEvent event) {
         float tempX = (event.getX() - sx);
         float tempY = (event.getY() - sy);
+        float cx = (cropRect.left + cropRect.right) / 2;
+        float cy = (cropRect.top + cropRect.bottom) / 2;
         switch (firstTouchStatus) {
             case TOUCH_SCALE_POINT_LEFT_TOP:
-                if (Math.abs(tempX * 3) >= Math.abs(tempY * 4)) {
-                    tempY = tempX * 3 / 4;
+                if (Math.abs(tempX) >= Math.abs(tempY * ratio)) {
+                    tempY = tempX / ratio;
                 } else {
-                    tempX = tempY * 4 / 3;
+                    tempX = tempY * ratio;
                 }
-                cropLeft = cropRect.left + tempX;
-                cropTop = cropRect.top + tempY;
+                if (tempX < 0 && cropLeft + tempX < 0) {
+                    tempX = -cropLeft;
+                    tempY = tempX / ratio;
+                } else if (tempX > 0 && cropLeft + tempX >= cropRect.right) {
+                    tempX = cropRect.right - cropLeft;
+                    tempY = tempX / ratio;
+                }
+                boolean canScale = true;
+                if (this.rotate + rotate >= 0) {
+                    if (!mirror) {
+                        boolean isLeftTopIntersect = isIntersect(cropLeft + tempX, cropTop + tempY, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                        boolean isRightTopIntersect = isIntersect(cropRect.right, cropTop + tempY, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                        boolean isLeftBottomIntersect = isIntersect(cropLeft + tempX, cropRect.bottom, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                        boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                        if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                            canScale = false;
+                    } else {
+                        boolean isLeftTopIntersect = isIntersect(cropLeft + tempX, cropTop + tempY, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                        boolean isRightTopIntersect = isIntersect(cropRect.right, cropTop + tempY, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                        boolean isLeftBottomIntersect = isIntersect(cropLeft + tempX, cropRect.bottom, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                        boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                        if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                            canScale = false;
+                    }
+                } else {
+                    if (!mirror) {
+                        boolean isLeftTopIntersect = isIntersect(cropLeft + tempX, cropTop + tempY, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                        boolean isRightTopIntersect = isIntersect(cropRect.right, cropTop + tempY, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                        boolean isLeftBottomIntersect = isIntersect(cropLeft + tempX, cropRect.bottom, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                        boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                        if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                            canScale = false;
+                    } else {
+                        boolean isLeftTopIntersect = isIntersect(cropLeft + tempX, cropTop + tempY, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                        boolean isRightTopIntersect = isIntersect(cropRect.right, cropTop + tempY, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                        boolean isLeftBottomIntersect = isIntersect(cropLeft + tempX, cropRect.bottom, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                        boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                        if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                            canScale = false;
+                    }
+                }
+                if (isAtOriginalRightBottom() && cropLeft + tempX < cropRect.right) {
+                    if (cropLeft + tempX > (!mirror? bitmapP1x : bitmapP2x)) {
+                        canScale = true;
+                    }
+                }
+                if (canScale) {
+                    cropLeft = cropLeft + tempX;
+                    cropTop = cropTop + tempY;
+                }
                 break;
             case TOUCH_SCALE_POINT_LEFT_BOTTOM:
-                if (Math.abs(tempX * 3) >= Math.abs(tempY * 4)) {
-                    tempY = -tempX * 3 / 4;
+                if (Math.abs(tempX) >= Math.abs(tempY * ratio)) {
+                    tempY = -tempX / ratio;
                 } else {
-                    tempX = -tempY * 4 / 3;
+                    tempX = -tempY * ratio;
                 }
-                cropLeft = cropRect.left + tempX;
-                cropBottom = cropRect.bottom + tempY;
+                if (tempX < 0 && cropLeft + tempX < 0) {
+                    tempX = -cropLeft;
+                    tempY = tempX / ratio;
+                } else if (tempX > 0 && cropLeft + tempX >= cropRect.right) {
+                    tempX = cropRect.right - cropLeft;
+                    tempY = tempX / ratio;
+                }
+                canScale = true;
+                if (this.rotate + rotate >= 0) {
+                    if (!mirror) {
+                        boolean isLeftTopIntersect = isIntersect(cropLeft + tempX, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                        boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                        boolean isLeftBottomIntersect = isIntersect(cropLeft + tempX, cropBottom + tempY, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                        boolean isRightBottomIntersect = isIntersect(cropRect.right, cropBottom + tempY, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                        if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                            canScale = false;
+                    } else {
+                        boolean isLeftTopIntersect = isIntersect(cropLeft + tempX, cropRect.top, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                        boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                        boolean isLeftBottomIntersect = isIntersect(cropLeft + tempX, cropBottom + tempY, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                        boolean isRightBottomIntersect = isIntersect(cropRect.right, cropBottom + tempY, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                        if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                            canScale = false;
+                    }
+                } else {
+                    if (!mirror) {
+                        boolean isLeftTopIntersect = isIntersect(cropLeft + tempX, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                        boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                        boolean isLeftBottomIntersect = isIntersect(cropLeft + tempX, cropBottom + tempY, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                        boolean isRightBottomIntersect = isIntersect(cropRect.right, cropBottom + tempY, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                        if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                            canScale = false;
+                    } else {
+                        boolean isLeftTopIntersect = isIntersect(cropLeft + tempX, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                        boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                        boolean isLeftBottomIntersect = isIntersect(cropLeft + tempX, cropBottom + tempY, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                        boolean isRightBottomIntersect = isIntersect(cropRect.right, cropBottom + tempY, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                        if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                            canScale = false;
+                    }
+                }
+                if (isAtOriginalRightTop() && cropLeft + tempX < cropRect.right) {
+                    if (cropLeft + tempX > (!mirror ? bitmapP1x: bitmapP2x)) {
+                        canScale = true;
+                    }
+                }
+                if (canScale) {
+                    cropLeft = cropLeft + tempX;
+                    cropBottom = cropBottom + tempY;
+                }
                 break;
             case TOUCH_SCALE_POINT_RIGHT_TOP:
-                if (Math.abs(tempX * 3) >= Math.abs(tempY * 4)) {
-                    tempY = -tempX * 3 / 4;
+                if (Math.abs(tempX) >= Math.abs(tempY * ratio)) {
+                    tempY = -tempX / ratio;
                 } else {
-                    tempX = -tempY * 4 / 3;
+                    tempX = -tempY * ratio;
                 }
-                cropRight = cropRect.right + tempX;
-                cropTop = cropRect.top + tempY;
+                if (tempX > 0 && cropRight + tempX > getWidth()) {
+                    tempX = getWidth() - cropRight;
+                    tempY = tempX / ratio;
+                } else if (tempX < 0 && cropRight + tempX <= cropRect.left) {
+                    tempX = cropRect.left - cropRight;
+                    tempY = tempX / ratio;
+                }
+                canScale = true;
+                if (this.rotate + rotate >= 0) {
+                    if (mirror) {
+                        boolean isLeftTopIntersect = isIntersect(cropRect.left, cropTop + tempY, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                        boolean isRightTopIntersect = isIntersect(cropRight + tempX, cropTop + tempY, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                        boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                        boolean isRightBottomIntersect = isIntersect(cropRight + tempX, cropRect.bottom, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                        if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                            canScale = false;
+                    } else {
+                        boolean isLeftTopIntersect = isIntersect(cropRect.left, cropTop + tempY, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                        boolean isRightTopIntersect = isIntersect(cropRight + tempX, cropTop + tempY, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                        boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                        boolean isRightBottomIntersect = isIntersect(cropRight + tempX, cropRect.bottom, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                        if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                            canScale = false;
+                    }
+                } else {
+                    if (!mirror) {
+                        boolean isLeftTopIntersect = isIntersect(cropRect.left, cropTop + tempY, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                        boolean isRightTopIntersect = isIntersect(cropRight + tempX, cropTop + tempY, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                        boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                        boolean isRightBottomIntersect = isIntersect(cropRight + tempX, cropRect.bottom, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                        if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                            canScale = false;
+                    } else {
+                        boolean isLeftTopIntersect = isIntersect(cropRect.left, cropTop + tempY, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                        boolean isRightTopIntersect = isIntersect(cropRight + tempX, cropTop + tempY, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                        boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                        boolean isRightBottomIntersect = isIntersect(cropRight + tempX, cropRect.bottom, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                        if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                            canScale = false;
+                    }
+                }
+                if (isAtOriginalLeftBottom() && cropRight + tempX > cropRect.left) {
+                    if (cropRight + tempX < (!mirror? bitmapP2x : bitmapP1x)) {
+                        canScale = true;
+                    }
+                }
+                if (canScale) {
+                    cropRight = cropRight + tempX;
+                    cropTop = cropTop + tempY;
+                }
                 break;
             case TOUCH_SCALE_POINT_RIGHT_BOTTOM:
-                if (Math.abs(tempX * 3) >= Math.abs(tempY * 4)) {
-                    tempY = tempX * 3 / 4;
+                if (Math.abs(tempX) >= Math.abs(tempY * ratio)) {
+                    tempY = tempX / ratio;
                 } else {
-                    tempX = tempY * 4 / 3;
+                    tempX = tempY * ratio;
                 }
-                cropRight = cropRect.right + tempX;
-                cropBottom = cropRect.bottom + tempY;
+                if (tempX > 0 && cropRight + tempX > getWidth()) {
+                    tempX = getWidth() - cropRight;
+                    tempY = tempX / ratio;
+                } else if (tempX < 0 && cropRight + tempX <= cropRect.left) {
+                    tempX = cropRect.left - cropRight;
+                    tempY = tempX / ratio;
+                }
+                canScale = true;
+                if (this.rotate + rotate >= 0) {
+                    if (!mirror) {
+                        boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                        boolean isRightTopIntersect = isIntersect(cropRight + tempX, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                        boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropBottom + tempY, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                        boolean isRightBottomIntersect = isIntersect(cropRight + tempX, cropBottom + tempY, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                        if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                            canScale = false;
+                    } else {
+                        boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                        boolean isRightTopIntersect = isIntersect(cropRight + tempX, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                        boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropBottom + tempY, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                        boolean isRightBottomIntersect = isIntersect(cropRight + tempX, cropBottom + tempY, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                        if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                            canScale = false;
+                    }
+                } else {
+                    if (!mirror) {
+                        boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                        boolean isRightTopIntersect = isIntersect(cropRight + tempX, cropRect.top, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                        boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropBottom + tempY, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                        boolean isRightBottomIntersect = isIntersect(cropRight + tempX, cropBottom + tempY, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                        if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                            canScale = false;
+                    } else {
+                        boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                        boolean isRightTopIntersect = isIntersect(cropRight + tempX, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                        boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropBottom + tempY, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                        boolean isRightBottomIntersect = isIntersect(cropRight + tempX, cropBottom + tempY, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                        if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                            canScale = false;
+                    }
+                }
+                if (isAtOriginalLeftTop() && cropRight + tempX > cropRect.left) {
+                    if (cropRight + tempX < (!mirror? bitmapP2x : bitmapP1x)) {
+                        canScale = true;
+                    }
+                }
+                if (canScale) {
+                    cropRight = cropRight + tempX;
+                    cropBottom = cropBottom + tempY;
+                }
                 break;
         }
-        dx = event.getX();
-        dy = event.getY();
+        sx = event.getX();
+        sy = event.getY();
         invalidate();
     }
 
@@ -348,10 +678,12 @@ public class DemoImageViewStable3 extends View {
         return TOUCH_PIC;
     }
 
-    private void init() {
+    private void init(Context context) {
+        mScaleDetector = new ScaleGestureDetector(context, this);
         setBackgroundColor(Color.GRAY);
         cropPaint.setColor(Color.WHITE);
         cropPaint.setStrokeWidth(5);
+        maskPaint.setColor(Color.parseColor("#b0000000"));
         leftTopCircleRect = new RectF(0, 0, SCALE_POINT_RADIUS * 2, SCALE_POINT_RADIUS * 2);
         rightTopCircleRect = new RectF(leftTopCircleRect);
         leftBottomRect = new RectF(leftTopCircleRect);
@@ -384,38 +716,76 @@ public class DemoImageViewStable3 extends View {
 
         float scale = 1.0f;
         if (this.rotate + rotate >= 0) {
-            boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
-            boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
-            boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
-            boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
-            if (isLeftTopIntersect) {
-                scale = Math.max((getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y) + getTriangleHeight(cropRect.left, cropRect.top, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y)) / getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y), scale);
-            }
-            if (isLeftBottomIntersect) {
-                scale = Math.max((getTriangleHeight(cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y) + getTriangleHeight(cropRect.left, cropRect.bottom, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y)) / getTriangleHeight(cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y), scale);
-            }
-            if (isRightTopIntersect) {
-                scale = Math.max((getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y) + getTriangleHeight(cropRect.right, cropRect.top, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y)) / getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y), scale);
-            }
-            if (isRightBottomIntersect) {
-                scale = Math.max((getTriangleHeight(cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y) + getTriangleHeight(cropRect.right, cropRect.bottom, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y)) / getTriangleHeight(cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y), scale);
+            if (!mirror) {
+                boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                if (isLeftTopIntersect) {
+                    scale = Math.max((getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y) + getTriangleHeight(cropRect.left, cropRect.top, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y)) / getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y), scale);
+                }
+                if (isLeftBottomIntersect) {
+                    scale = Math.max((getTriangleHeight(cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y) + getTriangleHeight(cropRect.left, cropRect.bottom, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y)) / getTriangleHeight(cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y), scale);
+                }
+                if (isRightTopIntersect) {
+                    scale = Math.max((getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y) + getTriangleHeight(cropRect.right, cropRect.top, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y)) / getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y), scale);
+                }
+                if (isRightBottomIntersect) {
+                    scale = Math.max((getTriangleHeight(cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y) + getTriangleHeight(cropRect.right, cropRect.bottom, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y)) / getTriangleHeight(cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y), scale);
+                }
+            } else {
+                boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                if (isLeftTopIntersect) {
+                    scale = Math.max((getTriangleHeight(cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y) + getTriangleHeight(cropRect.left, cropRect.top, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y)) / getTriangleHeight(cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y), scale);
+                }
+                if (isLeftBottomIntersect) {
+                    scale = Math.max((getTriangleHeight(cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y) + getTriangleHeight(cropRect.left, cropRect.bottom, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y)) / getTriangleHeight(cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y), scale);
+                }
+                if (isRightTopIntersect) {
+                    scale = Math.max((getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y) + getTriangleHeight(cropRect.right, cropRect.top, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y)) / getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y), scale);
+                }
+                if (isRightBottomIntersect) {
+                    scale = Math.max((getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y) + getTriangleHeight(cropRect.right, cropRect.bottom, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y)) / getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y), scale);
+                }
             }
         } else {
-            boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
-            boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
-            boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
-            boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
-            if (isLeftTopIntersect) {
-                scale = Math.max((getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y) + getTriangleHeight(cropRect.left, cropRect.top, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y)) / getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y), scale);
-            }
-            if (isLeftBottomIntersect) {
-                scale = Math.max((getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y) + getTriangleHeight(cropRect.left, cropRect.bottom, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y)) / getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y), scale);
-            }
-            if (isRightTopIntersect) {
-                scale = Math.max((getTriangleHeight(cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y) + getTriangleHeight(cropRect.right, cropRect.top, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y)) / getTriangleHeight(cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y), scale);
-            }
-            if (isRightBottomIntersect) {
-                scale = Math.max((getTriangleHeight(cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y) + getTriangleHeight(cropRect.right, cropRect.bottom, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y)) / getTriangleHeight(cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y), scale);
+            if (!mirror) {
+                boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                if (isLeftTopIntersect) {
+                    scale = Math.max((getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y) + getTriangleHeight(cropRect.left, cropRect.top, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y)) / getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y), scale);
+                }
+                if (isLeftBottomIntersect) {
+                    scale = Math.max((getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y) + getTriangleHeight(cropRect.left, cropRect.bottom, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y)) / getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y), scale);
+                }
+                if (isRightTopIntersect) {
+                    scale = Math.max((getTriangleHeight(cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y) + getTriangleHeight(cropRect.right, cropRect.top, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y)) / getTriangleHeight(cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y), scale);
+                }
+                if (isRightBottomIntersect) {
+                    scale = Math.max((getTriangleHeight(cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y) + getTriangleHeight(cropRect.right, cropRect.bottom, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y)) / getTriangleHeight(cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y), scale);
+                }
+            } else {
+                boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y);
+                boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y);
+                boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y);
+                boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y);
+                if (isLeftTopIntersect) {
+                    scale = Math.max((getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y) + getTriangleHeight(cropRect.left, cropRect.top, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y)) / getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP2x, bitmapP2y), scale);
+                }
+                if (isLeftBottomIntersect) {
+                    scale = Math.max((getTriangleHeight(cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y) + getTriangleHeight(cropRect.left, cropRect.bottom, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y)) / getTriangleHeight(cx, cy, bitmapP2x, bitmapP2y, bitmapP4x, bitmapP4y), scale);
+                }
+                if (isRightTopIntersect) {
+                    scale = Math.max((getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y) + getTriangleHeight(cropRect.right, cropRect.top, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y)) / getTriangleHeight(cx, cy, bitmapP1x, bitmapP1y, bitmapP3x, bitmapP3y), scale);
+                }
+                if (isRightBottomIntersect) {
+                    scale = Math.max((getTriangleHeight(cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y) + getTriangleHeight(cropRect.right, cropRect.bottom, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y)) / getTriangleHeight(cx, cy, bitmapP3x, bitmapP3y, bitmapP4x, bitmapP4y), scale);
+                }
             }
         }
         if (scale > 1) {
@@ -449,5 +819,113 @@ public class DemoImageViewStable3 extends View {
         return flag;
     }
 
+    @Override
+    public boolean onScale(ScaleGestureDetector detector) {
+        float scale = detector.getScaleFactor();
+        float cx = (cropRect.left + cropRect.right) / 2;
+        float cy = (cropRect.top + cropRect.bottom) / 2;
+        float tbitmapP1x = ((bitmapP1x - cx) * scale + cx);
+        float tbitmapP2x = ((bitmapP2x - cx) * scale + cx);
+        float tbitmapP3x = ((bitmapP3x - cx) * scale + cx);
+        float tbitmapP4x = ((bitmapP4x - cx) * scale + cx);
+        float tbitmapP1y = ((bitmapP1y - cy) * scale + cy);
+        float tbitmapP2y = ((bitmapP2y - cy) * scale + cy);
+        float tbitmapP3y = ((bitmapP3y - cy) * scale + cy);
+        float tbitmapP4y = ((bitmapP4y - cy) * scale + cy);
+        boolean canScale = true;
+        if (this.rotate >= 0) {
+            if (!mirror) {
+                boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, tbitmapP1x, tbitmapP1y, tbitmapP3x, tbitmapP3y);
+                boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, tbitmapP1x, tbitmapP1y, tbitmapP2x, tbitmapP2y);
+                boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, tbitmapP3x, tbitmapP3y, tbitmapP4x, tbitmapP4y);
+                boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, tbitmapP2x, tbitmapP2y, tbitmapP4x, tbitmapP4y);
+                if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                    canScale = false;
+            } else {
+                boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, tbitmapP2x, tbitmapP2y, tbitmapP4x, tbitmapP4y);
+                boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, tbitmapP1x, tbitmapP1y, tbitmapP2x, tbitmapP2y);
+                boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, tbitmapP3x, tbitmapP3y, tbitmapP4x, tbitmapP4y);
+                boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, tbitmapP1x, tbitmapP1y, tbitmapP3x, tbitmapP3y);
+                if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                    canScale = false;
+            }
+        } else {
+            if (!mirror) {
+                boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, tbitmapP1x, tbitmapP1y, tbitmapP2x, tbitmapP2y);
+                boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, tbitmapP2x, tbitmapP2y, tbitmapP4x, tbitmapP4y);
+                boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, tbitmapP1x, tbitmapP1y, tbitmapP3x, tbitmapP3y);
+                boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, tbitmapP3x, tbitmapP3y, tbitmapP4x, tbitmapP4y);
+                if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                    canScale = false;
+            } else {
+                boolean isLeftTopIntersect = isIntersect(cropRect.left, cropRect.top, cx, cy, tbitmapP1x, tbitmapP1y, tbitmapP2x, tbitmapP2y);
+                boolean isRightTopIntersect = isIntersect(cropRect.right, cropRect.top, cx, cy, tbitmapP1x, tbitmapP1y, tbitmapP3x, tbitmapP3y);
+                boolean isLeftBottomIntersect = isIntersect(cropRect.left, cropRect.bottom, cx, cy, tbitmapP2x, tbitmapP2y, tbitmapP4x, tbitmapP4y);
+                boolean isRightBottomIntersect = isIntersect(cropRect.right, cropRect.bottom, cx, cy, tbitmapP3x, tbitmapP3y, tbitmapP4x, tbitmapP4y);
+                if (isLeftTopIntersect | isLeftBottomIntersect | isRightTopIntersect | isRightBottomIntersect)
+                    canScale = false;
+            }
+        }
+        if (canScale) {
+            bitmapP1x = tbitmapP1x;
+            bitmapP2x = tbitmapP2x;
+            bitmapP3x = tbitmapP3x;
+            bitmapP4x = tbitmapP4x;
+            bitmapP1y = tbitmapP1y;
+            bitmapP2y = tbitmapP2y;
+            bitmapP3y = tbitmapP3y;
+            bitmapP4y = tbitmapP4y;
+        }
+        invalidate();
+        return true;
+    }
+
+    @Override
+    public boolean onScaleBegin(ScaleGestureDetector detector) {
+        isScaling = true;
+        return true;
+    }
+
+    @Override
+    public void onScaleEnd(ScaleGestureDetector detector) {
+        postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                isScaling = false;
+            }
+        }, 200);
+    }
+
+    private boolean isAtOriginalLeftTop() {
+        if (!mirror) {
+            return (Math.abs(this.rotate) < 1e-6 && bitmapP1x <= cropRect.left && bitmapP1y <= cropRect.top);
+        } else {
+            return (Math.abs(this.rotate) < 1e-6 && bitmapP2x <= cropRect.left && bitmapP2y <= cropRect.top);
+        }
+    }
+
+    private boolean isAtOriginalLeftBottom() {
+        if (!mirror) {
+            return (Math.abs(this.rotate) < 1e-6 && bitmapP3x <= cropRect.left && bitmapP3y >= cropRect.bottom);
+        } else {
+            return (Math.abs(this.rotate) < 1e-6 && bitmapP4x <= cropRect.left && bitmapP4y >= cropRect.bottom);
+        }
+    }
+
+    private boolean isAtOriginalRightTop() {
+        if (!mirror) {
+            return (Math.abs(this.rotate) < 1e-6 && bitmapP2x >= cropRect.right && bitmapP2y <= cropRect.top);
+        } else {
+            return (Math.abs(this.rotate) < 1e-6 && bitmapP1x >= cropRect.right && bitmapP1y <= cropRect.top);
+        }
+    }
+
+    private boolean isAtOriginalRightBottom() {
+        if (!mirror) {
+            return (Math.abs(this.rotate) < 1e-6 && bitmapP4x >= cropRect.right && bitmapP4y >= cropRect.bottom);
+        } else {
+            return (Math.abs(this.rotate) < 1e-6 && bitmapP3x >= cropRect.right && bitmapP3y >= cropRect.bottom);
+        }
+    }
 
 }
