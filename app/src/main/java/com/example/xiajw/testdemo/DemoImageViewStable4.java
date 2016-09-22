@@ -17,9 +17,9 @@ import android.view.View;
  * Created by xiajw on 2016/9/21.
  */
 
-public class DemoImageView2 extends View implements ScaleGestureDetector.OnScaleGestureListener {
+public class DemoImageViewStable4 extends View implements ScaleGestureDetector.OnScaleGestureListener {
 
-    private static final int SCALE_POINT_RADIUS = 100;
+    private static final int SCALE_POINT_RADIUS = 60;
 
     private static final int TOUCH_PIC = 0;
     private static final int TOUCH_SCALE_POINT_LEFT_TOP = 1;
@@ -33,7 +33,6 @@ public class DemoImageView2 extends View implements ScaleGestureDetector.OnScale
     private Bitmap bitmap = null, originalBit, startBitmap;
     private Paint bitmapPaint = new Paint();
     private Paint cropPaint = new Paint();
-    private Paint cropSubPaint = new Paint();
     private Paint maskPaint = new Paint();
     private RectF leftTopCircleRect = new RectF();
     private RectF rightTopCircleRect = new RectF();
@@ -57,17 +56,17 @@ public class DemoImageView2 extends View implements ScaleGestureDetector.OnScale
 
     private float ratio = 1f;
 
-    public DemoImageView2(Context context) {
+    public DemoImageViewStable4(Context context) {
         super(context);
         init(context);
     }
 
-    public DemoImageView2(Context context, AttributeSet attrs) {
+    public DemoImageViewStable4(Context context, AttributeSet attrs) {
         super(context, attrs);
         init(context);
     }
 
-    public DemoImageView2(Context context, AttributeSet attrs, int defStyleAttr) {
+    public DemoImageViewStable4(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init(context);
     }
@@ -254,11 +253,6 @@ public class DemoImageView2 extends View implements ScaleGestureDetector.OnScale
         canvas.drawLine(cropRight, cropTop, cropRight, cropBottom, cropPaint);
         canvas.drawLine(cropRight, cropBottom, cropLeft, cropBottom, cropPaint);
         canvas.drawLine(cropLeft, cropBottom, cropLeft, cropTop, cropPaint);
-        canvas.drawLine(cropLeft, (cropBottom + cropTop * 2) / 3, cropRight, (cropBottom + cropTop * 2) / 3, cropSubPaint);
-        canvas.drawLine(cropLeft, (cropBottom * 2 + cropTop) / 3, cropRight, (cropBottom * 2 + cropTop) / 3, cropSubPaint);
-        canvas.drawLine((cropLeft * 2 + cropRight) / 3, cropTop, (cropLeft * 2 + cropRight) / 3, cropBottom, cropSubPaint);
-        canvas.drawLine((cropLeft + cropRight * 2) / 3, cropTop, (cropLeft + cropRight * 2) / 3, cropBottom, cropSubPaint);
-
         leftTopCircleRect.set(cropLeft - radius, cropTop - radius,
                 cropLeft + radius, cropTop + radius);
         rightTopCircleRect.set(cropRight - radius, cropTop - radius,
@@ -271,18 +265,10 @@ public class DemoImageView2 extends View implements ScaleGestureDetector.OnScale
         canvas.drawRect(0, cropTop, cropLeft, cropBottom, maskPaint);
         canvas.drawRect(cropRight, cropTop, getWidth(), cropBottom, maskPaint);
         canvas.drawRect(0, cropBottom, getWidth(), getHeight(), maskPaint);
-//        canvas.drawRect(leftTopCircleRect, cropPaint);
-//        canvas.drawRect(rightTopCircleRect, cropPaint);
-//        canvas.drawRect(leftBottomRect, cropPaint);
-//        canvas.drawRect(rightBottomRect, cropPaint);
-        canvas.drawLine(cropLeft - 2, cropTop - 1, cropLeft - 2, cropTop + 59, cropPaint);
-        canvas.drawLine(cropLeft - 4, cropTop - 2, cropLeft + 58 , cropTop - 2, cropPaint);
-        canvas.drawLine(cropRight + 2, cropTop - 1, cropRight + 2, cropTop + 59, cropPaint);
-        canvas.drawLine(cropRight + 4, cropTop - 2, cropRight - 58 , cropTop - 2, cropPaint);
-        canvas.drawLine(cropLeft - 2, cropBottom + 1, cropLeft - 2, cropBottom - 59, cropPaint);
-        canvas.drawLine(cropLeft - 4, cropBottom + 2, cropLeft + 58 , cropBottom + 2, cropPaint);
-        canvas.drawLine(cropRight + 2, cropBottom + 1, cropRight + 2, cropBottom - 59, cropPaint);
-        canvas.drawLine(cropRight + 4, cropBottom + 2, cropRight - 58 , cropBottom + 2, cropPaint);
+        canvas.drawRect(leftTopCircleRect, cropPaint);
+        canvas.drawRect(rightTopCircleRect, cropPaint);
+        canvas.drawRect(leftBottomRect, cropPaint);
+        canvas.drawRect(rightBottomRect, cropPaint);
     }
 
     @Override
@@ -761,8 +747,6 @@ public class DemoImageView2 extends View implements ScaleGestureDetector.OnScale
         setBackgroundColor(Color.GRAY);
         cropPaint.setColor(Color.WHITE);
         cropPaint.setStrokeWidth(5);
-        cropSubPaint.setColor(Color.parseColor("#88ffffff"));
-        cropSubPaint.setStrokeWidth(1);
         maskPaint.setColor(Color.parseColor("#b0000000"));
         leftTopCircleRect = new RectF(0, 0, SCALE_POINT_RADIUS * 2, SCALE_POINT_RADIUS * 2);
         rightTopCircleRect = new RectF(leftTopCircleRect);
