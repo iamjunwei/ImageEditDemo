@@ -1,17 +1,18 @@
 package com.example.xiajw.testdemo;
 
+import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
 import android.view.View;
 import android.widget.Button;
 import android.widget.SeekBar;
 
-import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -64,19 +65,25 @@ public class MainActivity extends AppCompatActivity {
                 DisplayMetrics metrics = getResources().getDisplayMetrics();
                 BitmapFactory.Options options = new BitmapFactory.Options();
                 options.inJustDecodeBounds = true;
-                File file = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-                File picFile = new File(file.getAbsolutePath(), "Lighthouse.jpg");
-                BitmapFactory.decodeFile(picFile.getAbsolutePath(), options);
-                int w = options.outWidth;
-                int h = options.outHeight;
-                options.inJustDecodeBounds = false;
-                options.inSampleSize = Math.max(Math.min(w / metrics.widthPixels, h / metrics.heightPixels), 1);
-                return BitmapFactory.decodeFile(picFile.getAbsolutePath(), options);
+                AssetManager am = getResources().getAssets();
+                try {
+                    InputStream is = am.open("Lighthouse.jpg");
+                    BitmapFactory.decodeStream(is, null, options);
+                    int w = options.outWidth;
+                    int h = options.outHeight;
+                    options.inJustDecodeBounds = false;
+                    options.inSampleSize = Math.max(Math.min(w / metrics.widthPixels, h / metrics.heightPixels), 1);
+                    return BitmapFactory.decodeStream(is, null, options);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return null;
             }
 
             @Override
             protected void onPostExecute(final Bitmap bitmap) {
                 super.onPostExecute(bitmap);
+                if (bitmap == null) return;
                 imageView.initOriginBit(bitmap);
                 imageView.initBitmap(bitmap, ((float)bitmap.getWidth()) / bitmap.getHeight());
                 btnRevert.setEnabled(true);
